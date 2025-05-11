@@ -2,8 +2,8 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from app.forms import MapUploadForm
-from app.models import Map, Project
+from app.forms import MapUploadForm, ScalingForm
+from app.models import Map, Point, Project, Scaling
 
 # Create your views here.
 
@@ -57,6 +57,47 @@ def map_selection(request):
     maps = Map.objects.all()
     context["maps"] = maps
     return render(request, "map_selection.html", context)
+
+
+@login_required
+def set_scaling(request, map_id=None):
+    map = Map.objects.get(id=map_id)
+    if request.method == "POST":
+        point1_x = request.POST.get("point1_x")
+        point1_y = request.POST.get("point1_y")
+        point2_x = request.POST.get("point2_x")
+        point2_y = request.POST.get("point2_y")
+        real_distance = request.POST.get("real_distance")
+
+        if map.scaling:
+            scaling = map.scaling
+            scaling.point1.x = point1_x
+            scaling.point1.y = point1_y
+            scaling.point2.x = point2_x
+            scaling.point2.y = point2_y
+            scaling.real_distance = real_distance
+            scaling.point1.save()
+            scaling.point2.save()
+        else:
+            scaling = Scaling(map=map)
+            scaling.point1 = Point(x=point1_x, y=point1_y)
+            scaling.point2 = Point(x=point2_x, y=point2_y)
+            scaling.real_distance = real_distance
+            scaling.point1.save()
+            scaling.point2.save()
+            scaling.map = map
+
+        scaling.save()
+        return redirect("map_selection")
+    context = dict()
+    context["map"] = map
+    if map.scaling:
+        scaling_form = ScalingForm(scaling_instance=map.scaling)
+    else:
+        scaling_form = ScalingForm()
+    context["scaling_form"] = scaling_form
+
+    return render(request, "set_scaling.html", context)
 
 
 @login_required

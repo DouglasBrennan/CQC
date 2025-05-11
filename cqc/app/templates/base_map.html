@@ -1,0 +1,149 @@
+<canvas
+    id="mapCanvas"
+    tabindex="0"
+    style="height: {{map_canvas_height}}; width: {{ map_canvas_width }}; background-color: gray; display: block;"
+></canvas>
+<script>
+    //global variables
+    var mapCanvas = document.getElementById("mapCanvas"), mapContext = mapCanvas.getContext("2d");
+
+    let liveX, liveY;			//cursor live position relative to canvas (inverse of transformation matrix)
+    var xClick, yClick;			//coordinates on mouse click
+
+    const waitThreshhold = 100;	//ms, waittime for cursor change when dragging
+    const rControl = 25;		//radius of control circle
+    const snapThreshhold = 25;	//distance to snap cursor (same as control circle radius)
+    const mrklen = 5;			//small cross marker size
+
+    //map transformation	
+    var scale = 1; 				//initial scale
+    var mapScale = {{ map_scale|default:1 }};
+    var transX = transY = 0;	//translation of map
+
+    //state booleans
+    var isDragging = cDraw = rDraw = sDraw = false;
+
+    let image = new Image();
+    image.src = '{{map.file.url}}'; //load image from server
+    image.onload = () => draw(mapContext); // Ensure the image is drawn after it loads
+
+    draw(mapContext); //draw initial canvas and (empty) tables (onload?)
+
+    function resizeCanvas() {
+            //follow window size change
+            mapCanvas.width = window.innerWidth;
+            mapCanvas.height = window.innerHeight - 56; //56px for navbar
+        }
+    
+    //wheel event listener for zooming
+    mapCanvas.addEventListener('wheel', (event) => {
+        event.preventDefault(); //prevent scrolling as usual
+        if (event.deltaY < 0) { //check scroll direction
+            if (scale < 10) { //scale limit
+                scale *= 1.1; //zoom in
+                calcTransf(1.1, event); //calculate new transformation matrix
+
+            }
+        } else {
+            if (scale > 0.1) { // minimum scale limit
+                scale /= 1.1; //zoom out
+                calcTransf(1 / 1.1, event); //calculate new transformation matrix
+            }
+        }
+
+        draw(mapContext); //update canvas, tables
+    });
+
+    //mouse object for panning and clicking
+    const mouse = { x: 0, y: 0, oldX: 0, oldY: 0, button: false };
+
+    //setup mouse event listeners
+    mapCanvas.addEventListener("mousemove", mouseEvent, { passive: true });
+    mapCanvas.addEventListener("mousedown", mouseEvent, { passive: true });
+    mapCanvas.addEventListener("mouseup", mouseEvent, { passive: true });
+
+    //main mouse event function
+    function mouseEvent(event) {
+        liveCursor(event); //get inverse transformed mouse coordinates (relative to map)
+        if (event.type === "mousedown") { //on click
+            mouse.button = true; //boolean for clicked
+            xClick = liveX, yClick = liveY; //get current coordinates
+            transXclick = transX, transYclick = transY; //get current translation (for pan checking)
+
+            //check if mouse is grabbing and panning
+            setTimeout(function () {
+                if (mouse.button) { //if mouse down after timeout
+                    document.getElementById("mapCanvas").style.cursor = "grabbing"; //change cursor
+                    isDragging = true; //set dragging boolean for live draw
+                }
+                draw(mapContext); //update canvas, tables
+            }, waitThreshhold); //timeout
+        }
+        if (event.type === "mouseup") { //on release
+            mouse.button = isDragging = false; //change states
+            if (transXclick == transX && transYclick == transY) { //if no panning
+                {{ mouseup_action|safe }} //call function from outside
+                draw(mapContext);
+            }
+            document.getElementById("mapCanvas").style.cursor = "default"; //change cursor back
+        }
+        mouse.oldX = mouse.x, mouse.oldY = mouse.y; //write previous mouse coordinates
+        mouse.x = event.offsetX, mouse.y = event.offsetY; //write current mouse coordinates
+        if (mouse.button) { //on mouse down
+            pan({ x: mouse.x - mouse.oldX, y: mouse.y - mouse.oldY }); //pan by difference between old and new coordinates
+        }
+        draw(mapContext); //update canvas, tables
+    }
+
+    function pan(amount) {
+        transX += amount.x, transY += amount.y; //change translation 
+        draw(mapContext); //update canvas, tables
+    }
+
+    //calculate translation values from zooming/panning
+    function calcTransf(amount, e) {
+        transX = e.offsetX - (e.offsetX - transX) * amount;
+        transY = e.offsetY - (e.offsetY - transY) * amount;
+        return transX, transY;
+    }
+
+    function drawScaledImage(image) {
+        // Apply scaling to the image, but without modifying the canvas transform
+        const scaledWidth = image.naturalWidth * mapScale;
+        const scaledHeight = image.naturalHeight * mapScale;
+        mapContext.drawImage(image, 0, 0, scaledWidth, scaledHeight);
+    }
+
+    //draw function
+    function draw(canvasContext) {
+        resizeCanvas(); //resize canvas to window size
+        // canvasContext.setTransform(1, 0, 0, 1, 0, 0); //reset transformation matrix (for clearing)
+        canvasContext.clearRect(0, 0, mapCanvas.width, mapCanvas.height); //clear canvas
+        canvasContext.setTransform(scale, 0, 0, scale, transX, transY); //go back to transformation matrix
+        drawScaledImage(image); //draw background map
+        drawCursor(canvasContext); //draw cursor
+        // only perform liveDraw if the function is defined (eg. passed from outside)
+        if (typeof liveDraw === "function") {
+            liveDraw();
+        }
+    }
+
+    function drawCursor(canvasContext) { //draw small crosshair
+        canvasContext.strokeStyle = "#000";
+        canvasContext.lineWidth = 1;
+        canvasContext.beginPath();
+        canvasContext.moveTo(liveX - mrklen, liveY - mrklen);
+        canvasContext.lineTo(liveX + mrklen, liveY + mrklen);
+        canvasContext.stroke();
+        canvasContext.beginPath();
+        canvasContext.moveTo(liveX - mrklen, liveY + mrklen);
+        canvasContext.lineTo(liveX + mrklen, liveY - mrklen);
+        canvasContext.stroke();
+    }
+
+    function liveCursor(event) {
+        //unsnapped live position
+        liveX = (event.clientX - transX) / scale;
+        liveY = (event.clientY - 56 - transY) / scale;
+    }
+</script>

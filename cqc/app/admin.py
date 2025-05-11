@@ -1,12 +1,12 @@
 from django.contrib import admin
 
-from .models import Map, Point, Problem, Route
+from .models import Map, Point, Problem, Route, Scaling
 
 
 # Register your models here.
 @admin.register(Map)
 class MapAdmin(admin.ModelAdmin):
-    list_display = ("name", "uploaded_by", "upload_time")
+    list_display = ("name", "uploaded_by", "upload_time", "scaling")
     search_fields = ("name", "uploaded_by__username")
     list_filter = ("upload_time",)
     ordering = ("-upload_time",)
@@ -34,6 +34,15 @@ class RouteAdmin(admin.ModelAdmin):
 class ProblemAdmin(admin.ModelAdmin):
     list_display = ("map", "start", "end")
     search_fields = ("map__name", "start__x", "start__y")
+    list_filter = ("map",)
+    ordering = ("map",)
+    list_per_page = 10
+
+
+@admin.register(Scaling)
+class ScalingAdmin(admin.ModelAdmin):
+    list_display = ("map", "point1", "point2", "real_distance", "scaling_factor")
+    search_fields = ("map__name", "point1__x", "point1__y")
     list_filter = ("map",)
     ordering = ("map",)
     list_per_page = 10

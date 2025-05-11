@@ -6,27 +6,42 @@ class Point(models.Model):
     x = models.FloatField()
     y = models.FloatField()
 
+    def __str__(self):
+        return f"{self.x:.2f}, {self.y:.2f}"
+
 
 class Map(models.Model):
-    class Scaling(models.Model):
-        point1 = models.ForeignKey(
-            Point, related_name="point1", on_delete=models.CASCADE
-        )
-        point2 = models.ForeignKey(
-            Point, related_name="point2", on_delete=models.CASCADE
-        )
-        real_distance = models.FloatField()
-
     name = models.CharField(max_length=100)
     uploaded_by = models.ForeignKey(User, on_delete=models.CASCADE)
     upload_time = models.DateTimeField(auto_now_add=True)
     file = models.FileField(upload_to="maps/")
-    scaling = models.ForeignKey(
-        Scaling, related_name="scaling", on_delete=models.CASCADE, null=True
-    )
 
     def __str__(self):
         return self.name + " - uploaded by " + str(self.uploaded_by)
+
+
+class Scaling(models.Model):
+    map = models.OneToOneField(Map, related_name="scaling", on_delete=models.CASCADE)
+    point1 = models.ForeignKey(
+        Point, related_name="scaling_point1", on_delete=models.CASCADE
+    )
+    point2 = models.ForeignKey(
+        Point, related_name="scaling_point2", on_delete=models.CASCADE
+    )
+    real_distance = models.FloatField()
+
+    @property
+    def map_distance(self):
+        return (
+            (self.point1.x - self.point2.x) ** 2 + (self.point1.y - self.point2.y) ** 2
+        ) ** 0.5
+
+    @property
+    def scaling_factor(self):
+        return self.real_distance / self.map_distance / 0.48
+
+    def __str__(self):
+        return f"{self.scaling_factor:.2f}"
 
 
 class Route(models.Model):

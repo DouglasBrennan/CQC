@@ -759,6 +759,8 @@ window.addEventListener('click', (event) => {
 	
 	//hard load background image file (change to user upload later)
 	let image = new Image();
+	image.src = '{{map.file.url}}'; //load image from server
+	image.onload = () => draw(rc); // Ensure the image is drawn after it loads
 
 	draw(rc); //draw initial canvas and (empty) tables (onload?)
 	
@@ -859,9 +861,7 @@ window.addEventListener('click', (event) => {
 		tc.setTransform(1,0,0,1,0,0); //reset transformation matrix (for clearing)
 		tc.clearRect(0,0,routeCanvas.width,routeCanvas.height); //clear canvas
 		tc.setTransform(scale, 0, 0, scale, transX, transY); //go back to transformation matrix
-		if (cqc.mapFile) { //check if image is loaded
-			drawScaledImage(image); //draw background map
-		}
+		drawScaledImage(image); //draw background map
 		/*else {
 			drawPH(); //draw placeholder
 		}*/

@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>CQC Pathfinder</h1>
-
-<a href={% url 'map_selection' %}>Course Setting</a><br>
-<a href={% url 'route_choice' %}>Game</a>
+<div class="container">
+    <h1>CQC Pathfinder</h1>
+    <a href={% url 'map_selection' %}>Course Setting</a><br>
+    <a href={% url 'route_choice' %}>Game</a>
+</div>
 {% endblock %}

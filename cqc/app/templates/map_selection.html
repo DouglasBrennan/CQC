@@ -17,7 +17,8 @@
                     <td>{{ map.name }}</td>
                     <td>{{ map.uploaded_by }}</td>
                     <td>
-                        <a href="{% url 'course_setting' map.id %}" class="btn btn-light">Select</a>
+                        <a href="{% url 'course_setting' map.id %}" class="btn btn-light">Set Course</a>
+                        <a href="{% url 'set_scaling' map.id %}" class="btn btn-light">Scale</a>
                     </td>
                 </tr>
             {% empty %}

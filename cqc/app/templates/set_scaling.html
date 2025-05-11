@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div>
+    {% include "base_map.html" with map=map map_canvas_height='calc(100vh - 56px)' map_canvas_width='100%' mouseup_action="makeScale(event)" %}
+    <div class="card" style="position: absolute; bottom: 20px; right: 20px; z-index: 1000; width: 300px;">
+        <div class="card-body">
+            <h5 class="card-title">Set Scaling</h5>
+            <form method="post" action="{% url 'set_scaling' map_id=map.id %}">
+                {% csrf_token %}
+                {{ scaling_form.as_p }}
+                <button type="submit" class="btn btn-primary mt-2">Submit</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let point1_x = document.getElementById('id_point1_x');
+    let point1_y = document.getElementById('id_point1_y');
+    let point2_x = document.getElementById('id_point2_x');
+    let point2_y = document.getElementById('id_point2_y');
+    let map_distance = document.getElementById('id_map_distance');
+    
+    if (point1_x.value && point1_y.value && point2_x.value && point2_y.value) {
+        nsP = 2; // Both points are set
+    } else if (point1_x.value && point1_y.value) {
+        nsP = 1; // Only the first point is set
+    } else {
+        nsP = 0; // No points are set
+    }
+
+    function liveDraw(){
+        drawCursor(mapContext);
+        if (nsP == 1) { //live draw scale line to cursor
+            drawScaleLine(
+            parseFloat(point1_x.value) || 0, 
+            parseFloat(point1_y.value) || 0, 
+            parseFloat(liveX) || 0, 
+            parseFloat(liveY) || 0
+            );
+        }
+        if (nsP >= 2) { //live draw scale line to cursor
+            drawScaleLine(
+            parseFloat(point1_x.value) || 0, 
+            parseFloat(point1_y.value) || 0, 
+            parseFloat(point2_x.value) || 0, 
+            parseFloat(point2_y.value) || 0
+            );
+        }
+    }
+
+    function drawScaleLine(x1, y1, x2, y2) {
+        const tickSpacing = 20; // Distance between ticks
+        const smallTickLength = 20; // Length of small ticks
+        const largeTickLength = 40; // Length of large ticks
+
+        // Compute direction vector
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const unitX = dx / length;
+        const unitY = dy / length;
+
+        // Draw the scale line
+        mapContext.lineWidth = 5;
+        mapContext.strokeStyle = "black";
+        mapContext.beginPath();
+        mapContext.moveTo(x1, y1);
+        mapContext.lineTo(x2, y2);
+        mapContext.stroke();
+
+        // Draw tick marks along the line
+        for (let i = 0; i <= length; i += tickSpacing) {
+            const tickX = x1 + unitX * i;
+            const tickY = y1 + unitY * i;
+
+            // Every 5th tick is larger
+            const isLargeTick = (i / tickSpacing) % 5 === 0;
+            const tickLength = isLargeTick ? largeTickLength : smallTickLength;
+
+            // Perpendicular vector for tick direction
+            const perpX = -unitY * tickLength;
+            const perpY = unitX * tickLength;
+
+            mapContext.beginPath();
+            mapContext.moveTo(tickX - perpX / 2, tickY - perpY / 2);
+            mapContext.lineTo(tickX + perpX / 2, tickY + perpY / 2);
+            mapContext.stroke();
+        }
+    }
+
+    function makeScale(event) {
+        if (nsP < 1) {
+            point1_x.value = xClick;
+            point1_y.value = yClick;
+        }
+        if (nsP === 1) {
+            point2_x.value = xClick;
+            point2_y.value = yClick;
+            map_distance.value = Math.sqrt((point2_x.value - point1_x.value) ** 2 + (point2_y.value - point1_y.value) ** 2);
+        }
+        nsP += 1;
+        if (nsP > 2) {
+            nsP = 1;
+            point1_x.value = xClick;
+            point1_y.value = yClick;
+            point2_x.value = '';
+            point2_y.value = '';
+            map_distance.value = '';
+        }
+    }
+</script>
+
+{% endblock %}
