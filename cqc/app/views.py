@@ -1,9 +1,11 @@
+import json
+
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from app.forms import MapUploadForm, ScalingForm
-from app.models import Map, Point, Project, Scaling
+from app.models import Map, Point, Problem, Project, Route, Scaling
 
 # Create your views here.
 
@@ -101,7 +103,46 @@ def set_scaling(request, map_id=None):
 
 
 @login_required
-def course_setting(request, map_id=None):
+def course_setting(request, map_id=None, project_id=None):
+    if request.method == "POST":
+        project = Project(
+            map_id=map_id,
+            name="Test Project",
+            created_by=request.user,
+        )
+        project.save()
+        raw_route_data = request.POST.get("route_data")
+        # parse json to object
+        route_data = json.loads(raw_route_data)
+        for controlPair in route_data["cP"]:
+            start = Point(x=controlPair["start"]["x"], y=controlPair["start"]["y"])
+            end = Point(x=controlPair["ziel"]["x"], y=controlPair["ziel"]["y"])
+            start.save()
+            end.save()
+            problem = Problem(
+                map_id=map_id,
+                start=start,
+                end=end,
+            )
+            problem.save()
+            for route in controlPair["route"]:
+                route_obj = Route(
+                    map_id=map_id,
+                    set_by=request.user,
+                    number_of_angles=route["noA"],
+                    position=route["pos"],
+                )
+                route_obj.save()
+                for point in route["rP"]:
+                    point_obj = Point(x=point["x"], y=point["y"])
+                    point_obj.save()
+                    route_obj.points.add(point_obj)
+                route_obj.save()
+                problem.routes.add(route_obj)
+            problem.save()
+            project.problems.add(problem)
+        project.save()
+        return redirect("course_setting", map_id=map_id)
     map = Map.objects.get(id=map_id)
     projects = Project.objects.filter(map=map)
     context = {

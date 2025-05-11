@@ -66,7 +66,7 @@ class Route(models.Model):
         return self.points.last()
 
     def __str__(self):
-        return self.name
+        return f"Route {self.id} - {self.set_by.username} - {self.set_time}"
 
 
 class Problem(models.Model):

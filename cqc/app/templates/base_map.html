@@ -17,7 +17,8 @@
 
     //map transformation	
     var scale = 1; 				//initial scale
-    var mapScale = {{ map_scale|default:1 }};
+    var mapScale = {{ map.scaling.scaling_factor|default:1 }};
+    console.log("Map scale: ", mapScale);
     var transX = transY = 0;	//translation of map
 
     //state booleans
@@ -117,14 +118,13 @@
     //draw function
     function draw(canvasContext) {
         resizeCanvas(); //resize canvas to window size
-        // canvasContext.setTransform(1, 0, 0, 1, 0, 0); //reset transformation matrix (for clearing)
         canvasContext.clearRect(0, 0, mapCanvas.width, mapCanvas.height); //clear canvas
         canvasContext.setTransform(scale, 0, 0, scale, transX, transY); //go back to transformation matrix
         drawScaledImage(image); //draw background map
         drawCursor(canvasContext); //draw cursor
         // only perform liveDraw if the function is defined (eg. passed from outside)
-        if (typeof liveDraw === "function") {
-            liveDraw();
+        if (typeof extendDraw === "function") {
+            extendDraw();
         }
     }
 
